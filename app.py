@@ -1,113 +1,112 @@
+"""
+Chainlit UI 層
+負責處理用戶界面交互，將業務邏輯委托給服務層
+遵守單一職責原則 (Single Responsibility Principle)
+"""
 import chainlit as cl
-from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage
-import base64
+from services import LLMService, ImageService
 
 
-def encode_image_to_base64(image_path):
-    """將圖片編碼為 base64 格式"""
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode('utf-8')
+# 配置參數
+CONFIG = {
+    "MODEL": "gemma3:4b",
+    "BASE_URL": "http://localhost:11434",
+    "TEMPERATURE": 0.7
+}
 
 
 @cl.on_chat_start
 async def start():
     """初始化聊天會話"""
-    # 配置參數
-    BASE_URL = "http://localhost:11434"
-    MODEL = "gemma3:4b"  # 多模態模型（支援文字和圖片）
-    TEMPERATURE = 0.7
-    
-    # 初始化多模態模型
-    chat = ChatOllama(
-        model=MODEL,
-        base_url=BASE_URL,
-        temperature=TEMPERATURE,
+    # 初始化服務層
+    llm_service = LLMService(
+        model=CONFIG["MODEL"],
+        base_url=CONFIG["BASE_URL"],
+        temperature=CONFIG["TEMPERATURE"]
     )
     
-    # 將模型存儲在用戶會話中
-    cl.user_session.set("chat", chat)
-    cl.user_session.set("model", MODEL)
+    # 將服務存儲在用戶會話中
+    cl.user_session.set("llm_service", llm_service)
+    
+    # 獲取模型信息
+    model_info = llm_service.get_model_info()
     
     # 歡迎訊息
     await cl.Message(
-        content=f"👋 歡迎使用 AI 助手！\n\n📦 當前模型: **{MODEL}**\n\n💬 您可以：\n- 輸入文字進行對話\n- 📎 點擊輸入框旁的按鈕上傳圖片\n- 🖱️ 或直接拖拉圖片到聊天區域",
+        content=f"👋 歡迎使用 AI 助手！\n\n"
+                f"📦 當前模型: **{model_info['model']}**\n\n"
+                f"💬 您可以：\n"
+                f"- 輸入文字進行對話\n"
+                f"- 📎 點擊輸入框旁的按鈕上傳圖片\n"
+                f"- 🖱️ 或直接拖拉圖片到聊天區域",
     ).send()
 
 
 @cl.on_message
-async def main(message: cl.Message):
-    """處理用戶訊息"""
-    # 獲取聊天模型
-    chat = cl.user_session.get("chat")
+async def handle_message(message: cl.Message):
+    """
+    處理用戶訊息
+    UI層只負責接收輸入、顯示輸出，業務邏輯委托給服務層
+    """
+    # 獲取服務層實例
+    llm_service = cl.user_session.get("llm_service")
     
     # 檢查是否有圖片附件
-    print(f"收到訊息，elements 數量: {len(message.elements)}")
-    if message.elements:
-        for elem in message.elements:
-            print(f"元素類型: {elem.mime if hasattr(elem, 'mime') else 'unknown'}")
-    
     images = [file for file in message.elements if "image" in file.mime]
     
     try:
         if images:
             # 處理圖片訊息
-            image_file = images[0]  # 取第一張圖片
-            
-            # 創建圖片元素以在界面中顯示
-            image_element = cl.Image(
-                name="uploaded_image",
-                path=image_file.path
-            )
-            
-            # 顯示處理中的訊息（附帶圖片）
-            msg = cl.Message(
-                content="🔍 正在分析圖片...",
-                elements=[image_element]
-            )
-            await msg.send()
-            
-            # 讀取並編碼圖片
-            image_data = encode_image_to_base64(image_file.path)
-            
-            # 創建包含圖片的訊息
-            user_message = HumanMessage(
-                content=[
-                    {"type": "text", "text": message.content or "請描述這張圖片"},
-                    {
-                        "type": "image_url",
-                        "image_url": f"data:image/jpeg;base64,{image_data}"
-                    }
-                ]
-            )
-            
-            # 獲取模型回應
-            response = await cl.make_async(chat.invoke)([user_message])
-            
-            # 更新訊息內容（保留圖片顯示）
-            msg.content = response.content
-            msg.elements = [image_element]
-            await msg.update()
-            
+            await _handle_image_message(message, images[0], llm_service)
         else:
             # 處理純文字訊息
-            msg = cl.Message(content="")
-            await msg.send()
-            
-            # 創建文字訊息
-            user_message = HumanMessage(content=message.content)
-            
-            # 獲取模型回應
-            response = await cl.make_async(chat.invoke)([user_message])
-            
-            # 更新訊息內容
-            msg.content = response.content
-            await msg.update()
+            await _handle_text_message(message, llm_service)
             
     except Exception as e:
         await cl.Message(
             content=f"❌ 發生錯誤: {str(e)}\n\n請確保 Ollama 服務正在運行且模型已下載。"
         ).send()
+
+
+async def _handle_text_message(message: cl.Message, llm_service: LLMService):
+    """處理純文字訊息"""
+    # 顯示處理中狀態
+    msg = cl.Message(content="")
+    await msg.send()
+    
+    # 委托給服務層處理業務邏輯
+    response_text = await cl.make_async(llm_service.process_text)(message.content)
+    
+    # 更新 UI
+    msg.content = response_text
+    await msg.update()
+
+
+async def _handle_image_message(
+    message: cl.Message, 
+    image_file, 
+    llm_service: LLMService
+):
+    """處理圖片訊息"""
+   
+    msg = cl.Message(
+        content="🔍 正在分析圖片...",
+    )
+    await msg.send()
+    
+    # 使用服務層處理圖片
+    image_data_url = ImageService.create_image_data_url(image_file.path)
+    user_text = message.content or "請描述這張圖片"
+    
+    # 委托給服務層處理業務邏輯
+    response_text = await cl.make_async(llm_service.process_image_with_text)(
+        user_text, 
+        image_data_url
+    )
+    
+    # 更新 UI（保留圖片顯示）
+    msg.content = response_text
+    await msg.update()
 
 
 @cl.on_settings_update

@@ -65,13 +65,30 @@ python main.py
 
 ```
 ai_agent/
-├── app.py              # Chainlit UI 應用
-├── main.py             # 命令列版本
-├── requirements.txt    # Python 依賴
-├── chainlit.md         # Chainlit 歡迎頁面
-├── .chainlit           # Chainlit 配置
-└── README.md           # 說明文件
+├── app.py                    # Chainlit UI 應用（UI 層）
+├── services/                 # 業務邏輯層
+│   ├── __init__.py          
+│   ├── llm_service.py       # LLM 服務
+│   └── image_service.py     # 圖片處理服務
+├── main.py                  # 命令列版本
+├── requirements.txt         # Python 依賴
+├── chainlit.md              # Chainlit 歡迎頁面
+├── .chainlit/               # Chainlit 配置目錄
+│   └── config.toml
+├── ARCHITECTURE.md          # 架構設計文檔
+└── README.md                # 說明文件
 ```
+
+### 架構特點
+
+本專案遵守 **SOLID 原則**，採用分層架構：
+
+- **UI 層** (`app.py`): 負責用戶界面交互
+- **服務層** (`services/`): 封裝業務邏輯
+  - `LLMService`: 處理模型調用
+  - `ImageService`: 處理圖片編碼
+
+詳細架構說明請參考 [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## 技術棧
 
