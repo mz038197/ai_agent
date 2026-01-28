@@ -1,0 +1,38 @@
+[project]
+# 是否啟用遙測
+enable_telemetry = false
+
+# 會話超時時間（秒）
+session_timeout = 3600
+
+# 快取
+cache = false
+
+[features]
+# 啟用文件上傳
+file_upload = { enabled = true, max_file_size_mb = 10, max_files = 5 }
+
+# 允許的文件類型（MIME types）
+allowed_mime_types = [
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/gif",
+    "image/webp"
+]
+
+[UI]
+# 應用名稱
+name = "AI 助手"
+
+# 顯示 Github 按鈕
+show_readme_as_default = true
+
+# 預設摺疊側邊欄
+default_collapse_content = true
+
+# 深色模式
+default_theme = "light"
+
+[meta]
+generated_by = "1.0.0"
