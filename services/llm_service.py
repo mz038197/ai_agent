@@ -1,7 +1,7 @@
 """LLM 服務層"""
 from typing import List, Dict, Any, Optional
 from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, BaseMessage
+from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 
 
 class LLMService:
@@ -11,7 +11,8 @@ class LLMService:
         self, 
         model: str = "gemma3:4b",
         base_url: str = "http://localhost:11434",
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        max_history: int = 20
     ):
         """
         初始化 LLM 服務
@@ -20,93 +21,83 @@ class LLMService:
             model: 模型名稱
             base_url: Ollama 服務地址
             temperature: 溫度參數（控制隨機性）
+            max_history: 保留的最大歷史訊息數量（預設 20 條，即 10 輪對話）
         """
         self.model = model
         self.base_url = base_url
         self.temperature = temperature
+        self.max_history = max_history
         self.chat = ChatOllama(
             model=model,
             base_url=base_url,
             temperature=temperature,
         )
+        # 對話歷史記錄
+        self.messages: List[BaseMessage] = []
     
-    def invoke(self, messages: List[BaseMessage]) -> str:
+
+    def send_message(
+        self, 
+        content: str, 
+        image_url: Optional[str] = None
+    ) -> str:
         """
-        調用 LLM 生成回應
+        統一的訊息發送接口（對外唯一方法）
+        自動判斷是純文字還是多模態訊息，並管理對話歷史
         
         Args:
-            messages: 消息列表
+            content: 用戶輸入的文字內容
+            image_url: 可選的圖片 URL（base64 data URL 或普通 URL）
             
         Returns:
             模型的回應文字
         """
-        response = self.chat.invoke(messages)
+
+        content=[{"type": "text", "text": content}]
+        if image_url:
+            content.append({"type": "image_url", "image_url": image_url})
+            
+        user_message = HumanMessage(content=content)
+        
+        # 將新訊息加入歷史
+        self.messages.append(user_message)
+        
+        # 限制歷史長度（避免 token 超限）
+        messages_to_send = self._get_limited_history()
+        
+        # 調用模型
+        response = self.chat.invoke(messages_to_send)
+        
+        # 將 AI 回應加入歷史
+        ai_message = AIMessage(content=response.content)
+        self.messages.append(ai_message)
+        
         return response.content
     
-    def create_text_message(self, content: str) -> HumanMessage:
+    def _get_limited_history(self) -> List[BaseMessage]:
         """
-        創建純文字訊息
+        獲取受限制的歷史訊息（內部方法）
+        只保留最近的 max_history 條訊息
         
-        Args:
-            content: 文字內容
-            
         Returns:
-            HumanMessage 對象
+            受限制的訊息列表
         """
-        return HumanMessage(content=content)
+        if len(self.messages) > self.max_history:
+            return self.messages[-self.max_history:]
+        return self.messages
     
-    def create_multimodal_message(
-        self, 
-        text: str, 
-        image_data_url: str
-    ) -> HumanMessage:
-        """
-        創建多模態訊息（文字+圖片）
-        
-        Args:
-            text: 文字內容
-            image_data_url: 圖片的 data URL
-            
-        Returns:
-            包含文字和圖片的 HumanMessage
-        """
-        return HumanMessage(
-            content=[
-                {"type": "text", "text": text},
-                {"type": "image_url", "image_url": image_data_url}
-            ]
-        )
+    def clear_history(self) -> None:
+        """清除對話歷史"""
+        self.messages = []
     
-    def process_text(self, text: str) -> str:
+    def get_history_length(self) -> int:
         """
-        處理純文字輸入
+        獲取當前歷史訊息數量
         
-        Args:
-            text: 用戶輸入的文字
-            
         Returns:
-            模型的回應
+            訊息數量
         """
-        message = self.create_text_message(text)
-        return self.invoke([message])
-    
-    def process_image_with_text(
-        self, 
-        text: str, 
-        image_data_url: str
-    ) -> str:
-        """
-        處理圖片+文字輸入
-        
-        Args:
-            text: 用戶的問題
-            image_data_url: 圖片的 data URL
-            
-        Returns:
-            模型的回應
-        """
-        message = self.create_multimodal_message(text, image_data_url)
-        return self.invoke([message])
+        return len(self.messages)
     
     def get_model_info(self) -> Dict[str, Any]:
         """

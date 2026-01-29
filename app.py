@@ -45,7 +45,7 @@ async def start():
 @cl.on_message
 async def handle_message(message: cl.Message):
     """
-    處理用戶訊息
+    處理用戶訊息（統一處理文字和圖片）
     UI層只負責接收輸入、顯示輸出，業務邏輯委托給服務層
     """
     # 獲取服務層實例
@@ -55,58 +55,33 @@ async def handle_message(message: cl.Message):
     images = [file for file in message.elements if "image" in file.mime]
     
     try:
+        # 顯示處理中狀態
+        status_text = "🔍 正在分析圖片..." if images else ""
+        msg = cl.Message(content=status_text)
+        await msg.send()
+        
+        # 準備參數
+        user_text = message.content or ("請描述這張圖片" if images else "")
+        image_url = None
+        
+        # 如果有圖片，轉換為 data URL
         if images:
-            # 處理圖片訊息
-            await _handle_image_message(message, images[0], llm_service)
-        else:
-            # 處理純文字訊息
-            await _handle_text_message(message, llm_service)
+            image_url = ImageService.create_image_data_url(images[0].path)
+        
+        # 統一調用 send_message（內部會自動判斷是否為多模態）
+        response_text = await cl.make_async(llm_service.send_message)(
+            content=user_text,
+            image_url=image_url
+        )
+        
+        # 更新 UI
+        msg.content = response_text
+        await msg.update()
             
     except Exception as e:
         await cl.Message(
             content=f"❌ 發生錯誤: {str(e)}\n\n請確保 Ollama 服務正在運行且模型已下載。"
         ).send()
-
-
-async def _handle_text_message(message: cl.Message, llm_service: LLMService):
-    """處理純文字訊息"""
-    # 顯示處理中狀態
-    msg = cl.Message(content="")
-    await msg.send()
-    
-    # 委托給服務層處理業務邏輯
-    response_text = await cl.make_async(llm_service.process_text)(message.content)
-    
-    # 更新 UI
-    msg.content = response_text
-    await msg.update()
-
-
-async def _handle_image_message(
-    message: cl.Message, 
-    image_file, 
-    llm_service: LLMService
-):
-    """處理圖片訊息"""
-   
-    msg = cl.Message(
-        content="🔍 正在分析圖片...",
-    )
-    await msg.send()
-    
-    # 使用服務層處理圖片
-    image_data_url = ImageService.create_image_data_url(image_file.path)
-    user_text = message.content or "請描述這張圖片"
-    
-    # 委托給服務層處理業務邏輯
-    response_text = await cl.make_async(llm_service.process_image_with_text)(
-        user_text, 
-        image_data_url
-    )
-    
-    # 更新 UI（保留圖片顯示）
-    msg.content = response_text
-    await msg.update()
 
 
 @cl.on_settings_update
