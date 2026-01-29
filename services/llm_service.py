@@ -1,7 +1,8 @@
 """LLM 服務層"""
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 
 
 class LLMService:
@@ -12,7 +13,8 @@ class LLMService:
         model: str = "gemma3:4b",
         base_url: str = "http://localhost:11434",
         temperature: float = 0.7,
-        max_history: int = 20
+        max_history: int = 20,
+        system_prompt: Optional[str] = None
     ):
         """
         初始化 LLM 服務
@@ -22,11 +24,13 @@ class LLMService:
             base_url: Ollama 服務地址
             temperature: 溫度參數（控制隨機性）
             max_history: 保留的最大歷史訊息數量（預設 20 條，即 10 輪對話）
+            system_prompt: 系統提示詞（可選，預設為專業助手）
         """
         self.model = model
         self.base_url = base_url
         self.temperature = temperature
         self.max_history = max_history
+        self.system_prompt = system_prompt or "你是一個專業、友善的 AI 助手。"
         self.chat = ChatOllama(
             model=model,
             base_url=base_url,
@@ -65,8 +69,14 @@ class LLMService:
         # 限制歷史長度（避免 token 超限）
         messages_to_send = self._get_limited_history()
         
-        # 調用模型
-        response = self.chat.invoke(messages_to_send)
+        # 調用模型（每次都傳入包含當前時間的 SystemMessage）
+        current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
+        system_message = SystemMessage(
+            content=f"{self.system_prompt}\n\n當前時間：{current_time}"
+        )
+        response = self.chat.invoke(
+            [system_message] + messages_to_send
+        )
         
         # 將 AI 回應加入歷史
         ai_message = AIMessage(content=response.content)
@@ -90,6 +100,24 @@ class LLMService:
         """清除對話歷史"""
         self.messages = []
     
+    def set_system_prompt(self, system_prompt: str) -> None:
+        """
+        更新系統提示詞
+        
+        Args:
+            system_prompt: 新的系統提示詞
+        """
+        self.system_prompt = system_prompt
+    
+    def get_system_prompt(self) -> str:
+        """
+        獲取當前的系統提示詞
+        
+        Returns:
+            系統提示詞內容
+        """
+        return self.system_prompt
+    
     def get_history_length(self) -> int:
         """
         獲取當前歷史訊息數量
@@ -109,5 +137,6 @@ class LLMService:
         return {
             "model": self.model,
             "base_url": self.base_url,
-            "temperature": self.temperature
+            "temperature": self.temperature,
+            "system_prompt": self.system_prompt
         }

@@ -74,18 +74,19 @@ class RAGService:
         k = k or self.default_k
         
         # 1. 檢索相關文檔
-        if use_mmr:
-            relevant_docs = self.vector_service.max_marginal_relevance_search(query, k=k)
-        else:
-            relevant_docs = self.vector_service.similarity_search(query, k=k)
+        relevant_docs = []
+        # if use_mmr:
+        #     relevant_docs = self.vector_service.max_marginal_relevance_search(query, k=k)
+        # else:
+        #     relevant_docs = self.vector_service.similarity_search(query, k=k)
         
         # 如果沒有找到相關文檔
         if not relevant_docs:
-            return self.llm_service.send_message(
-                f"{query}\n\n（注意：知識庫中沒有找到相關資料，以下是基於模型知識的回答）"
-            )
+            print(query)
+            return self.llm_service.send_message(query)
         
         # 2. 構建上下文
+        print(relevant_docs)
         context = self._format_context(relevant_docs)
         
         # 3. 構建提示詞
@@ -202,18 +203,18 @@ class RAGService:
         """
         return f"""請根據以下提供的上下文信息來回答問題。
 
-**重要規則：**
-1. 僅基於提供的上下文信息回答
-2. 如果上下文中沒有相關信息，請明確說明
-3. 不要編造或推測上下文中沒有的信息
-4. 可以整合多個文檔片段的信息
+                **重要規則：**
+                1. 僅基於提供的上下文信息回答
+                2. 如果上下文中沒有相關信息，請明確說明
+                3. 不要編造或推測上下文中沒有的信息
+                4. 可以整合多個文檔片段的信息
 
-**上下文信息：**
-{context}
+                **上下文信息：**
+                {context}
 
-**問題：** {query}
+                **問題：** {query}
 
-**回答：**"""
+                **回答：**"""
     
     def get_knowledge_base_stats(self) -> dict:
         """

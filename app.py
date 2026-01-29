@@ -19,7 +19,13 @@ CONFIG = {
     "BASE_URL": "http://localhost:11434",
     "TEMPERATURE": 0.7,
     "EMBEDDING_MODEL": "nomic-embed-text",
-    "CHROMA_DB_PATH": "./chroma_db"
+    "CHROMA_DB_PATH": "./chroma_db",
+    "SYSTEM_PROMPT": """你是一個專業、友善的 AI 助手，具備以下特點：
+- 使用繁體中文回答
+- 提供準確、清晰、有幫助的回答
+- 當處理文檔相關問題時，嚴格基於提供的上下文回答
+- 如果不確定或信息不足，會明確說明
+- 以專業但親切的語氣與用戶交流"""
 }
 
 
@@ -30,7 +36,8 @@ async def start():
     llm_service = LLMService(
         model=CONFIG["MODEL"],
         base_url=CONFIG["BASE_URL"],
-        temperature=CONFIG["TEMPERATURE"]
+        temperature=CONFIG["TEMPERATURE"],
+        system_prompt=CONFIG["SYSTEM_PROMPT"]
     )
     
     # 初始化 RAG 相關服務
@@ -100,8 +107,8 @@ async def handle_message(message: cl.Message):
             await cl.AskActionMessage(
                 content="確定要清空整個知識庫嗎？此操作無法撤銷。",
                 actions=[
-                    cl.Action(name="confirm", value="yes", label="✅ 確定清空"),
-                    cl.Action(name="cancel", value="no", label="❌ 取消"),
+                    cl.Action(name="confirm", payload={"action": "confirm"}, label="✅ 確定清空"),
+                    cl.Action(name="cancel", payload={"action": "cancel"}, label="❌ 取消"),
                 ],
             ).send()
             return
@@ -213,12 +220,8 @@ async def _handle_image_message(
 async def on_action(action: cl.Action):
     """處理清空知識庫確認"""
     rag_service = cl.user_session.get("rag_service")
-    
-    if action.value == "yes":
-        await cl.make_async(rag_service.clear_knowledge_base)()
-        await cl.Message(content="✅ 知識庫已清空").send()
-    else:
-        await cl.Message(content="❌ 已取消操作").send()
+    await cl.make_async(rag_service.clear_knowledge_base)()
+    await cl.Message(content="✅ 知識庫已清空").send()
 
 
 @cl.action_callback("cancel")
