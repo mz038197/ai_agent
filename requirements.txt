@@ -1,4 +1,10 @@
 langchain
 langchain-ollama
 langchain-core
+langchain-chroma
+langchain-text-splitters
+langchain-community
 chainlit
+chromadb
+pypdf
+unstructured
