@@ -74,6 +74,8 @@ class LLMService:
         system_message = SystemMessage(
             content=f"{self.system_prompt}\n\n當前時間：{current_time}"
         )
+
+        print(f"messages_to_send: {messages_to_send}")
         response = self.chat.invoke(
             [system_message] + messages_to_send
         )

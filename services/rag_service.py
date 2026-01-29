@@ -74,12 +74,29 @@ class RAGService:
         k = k or self.default_k
         
         # 1. 檢索相關文檔
-        relevant_docs = []
-        # if use_mmr:
-        #     relevant_docs = self.vector_service.max_marginal_relevance_search(query, k=k)
-        # else:
-        #     relevant_docs = self.vector_service.similarity_search(query, k=k)
-        
+        # relevant_docs = self.vector_service.similarity_search_with_score(query, k=k)
+
+
+        intent_prompt = f"""判断用户问题是否需要查询知识库：
+                问题：{query}
+
+                如果是闲聊、常识问题、打招呼等，回答"NO"
+                如果是询问文档内容、技术问题等，回答"YES"
+
+                只回答 YES 或 NO："""
+
+        intent = self.llm_service.send_message(intent_prompt).strip()
+        print(f"是否需要檢索? : {intent}")
+
+        if intent == "NO":
+            # 直接聊天，不检索
+            return self.llm_service.send_message(query)
+
+        # 2. 需要知识库，进行检索
+        relevant_docs = self.vector_service.similarity_search_with_score(query, k=k)
+
+        relevant_docs = [doc for doc, score in relevant_docs if score < 0.8]
+                
         # 如果沒有找到相關文檔
         if not relevant_docs:
             print(query)
@@ -138,6 +155,60 @@ class RAGService:
         response = self.llm_service.send_message(prompt)
         
         return response
+    
+    def query_with_auto_mode(
+        self, 
+        query: str, 
+        k: Optional[int] = None,
+        include_sources: bool = True,
+        relevance_threshold: float = 1.0
+    ) -> str:
+        """
+        自動模式查詢 - 根據相似度智能判斷是否使用知識庫
+        
+        工作原理：
+        1. 先檢索知識庫並獲取相似度分數
+        2. 如果最佳匹配的分數 < relevance_threshold，使用 RAG
+        3. 否則判定為閒聊/常識問題，直接對話
+        
+        Args:
+            query: 用戶問題
+            k: 檢索的文檔數量
+            include_sources: 是否在回答中包含來源信息
+            relevance_threshold: 相關性閾值（距離，越小越相關，預設 1.0）
+            
+        Returns:
+            AI 回答
+        """
+        k = k or self.default_k
+        
+        # 1. 檢索帶分數的文檔
+        results = self.vector_service.similarity_search_with_score(query, k=k)
+        
+        # 2. 如果知識庫為空
+        if not results:
+            return self.llm_service.send_message(query)
+        
+        # 3. 獲取最佳匹配的分數（距離越小越相關）
+        best_score = results[0][1]
+        
+        # 4. 根據相似度判斷
+        if best_score <= relevance_threshold:
+            # 高相關性 - 使用 RAG
+            relevant_docs = [doc for doc, score in results if score <= relevance_threshold]
+            
+            context = self._format_context(relevant_docs)
+            prompt = self._build_prompt(query, context)
+            response = self.llm_service.send_message(prompt)
+            
+            if include_sources:
+                sources = self._format_sources(relevant_docs)
+                response = f"{response}\n\n{sources}"
+            
+            return response
+        else:
+            # 低相關性 - 直接聊天（不使用知識庫）
+            return self.llm_service.send_message(query)
     
     def _format_context(self, documents: List[Document]) -> str:
         """

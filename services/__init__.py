@@ -4,11 +4,13 @@ from .image_service import ImageService
 from .document_service import DocumentService
 from .vector_store_service import VectorStoreService
 from .rag_service import RAGService
+from .agent_service import AgentService
 
 __all__ = [
     'LLMService', 
     'ImageService',
     'DocumentService',
     'VectorStoreService',
-    'RAGService'
+    'RAGService',
+    'AgentService'
 ]

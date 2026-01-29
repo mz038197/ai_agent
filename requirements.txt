@@ -8,3 +8,4 @@ chainlit
 chromadb
 pypdf
 unstructured
+duckduckgo-search
