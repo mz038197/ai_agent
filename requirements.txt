@@ -5,3 +5,4 @@ langgraph
 fastmcp
 gspread
 google-auth
+pyyaml
