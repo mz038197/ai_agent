@@ -3,7 +3,7 @@ name: google-sheets
 description: 操作 Google Sheets 的专业技能
 keywords: [sheets, 表格, spreadsheet, excel, 试算表, 单元格]
 categories: [data, productivity]
-tools_file: tools.py
+tools_file: scripts/tools.py
 tools:
   - read_cell
   - write_cell
