@@ -77,7 +77,7 @@ models/
 
 # API keys and secrets
 secrets.json
-credentials.json
+#credentials.json
 *.key
 *.pem
 
