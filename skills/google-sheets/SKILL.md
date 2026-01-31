@@ -1,132 +1,117 @@
 ---
 name: google-sheets
-description: 操作 Google Sheets 的专业技能
-keywords: [sheets, 表格, spreadsheet, excel, 试算表, 单元格]
-categories: [data, productivity]
+description: 操作 Google Sheets 試算表的讀取和寫入功能。使用此技能來讀取單元格、寫入數據、批量處理範圍數據，或列出工作表。當用戶提到 sheets、試算表、spreadsheet、單元格、或需要操作 Google Sheets 時使用。
 tools_file: scripts/tools.py
 tools:
   - read_cell
   - write_cell
   - read_range
   - list_sheets
-trigger_patterns:
-  - "表格"
-  - "sheets"
-  - "试算表"
-  - "单元格"
-  - "spreadsheet"
-version: 1.0
 ---
 
-# Google Sheets Skill
+# Google Sheets 操作
 
-## 描述
-此 skill 提供操作 Google Sheets 的专业能力，帮助你高效、准确地完成试算表操作。
+## 快速開始
 
-## 可用工具
+使用 `scripts/tools.py` 中的工具操作 Google Sheets：
 
-### 1. read_cell
-读取指定单元格的值
-- **参数**：
-  - `spreadsheet_id`: 试算表 ID（从网址中获取）
-  - `cell`: 单元格位置（如 "A1", "B2"）
-  - `sheet_name`: 工作表名称（默认 "工作表1"）
-- **示例**：读取试算表的 A1 单元格
-
-### 2. write_cell
-写入值到指定单元格
-- **参数**：
-  - `spreadsheet_id`: 试算表 ID
-  - `cell`: 单元格位置
-  - `value`: 要写入的值
-  - `sheet_name`: 工作表名称（默认 "工作表1"）
-- **示例**：在 A1 写入 "Hello"
-
-### 3. read_range
-读取指定范围的值
-- **参数**：
-  - `spreadsheet_id`: 试算表 ID
-  - `range_name`: 范围（如 "A1:B10"）
-  - `sheet_name`: 工作表名称
-- **示例**：读取 A1 到 B10 的所有数据
-
-### 4. list_sheets
-列出试算表中的所有工作表
-- **参数**：
-  - `spreadsheet_id`: 试算表 ID
-- **示例**：列出所有工作表名称
-
-## 最佳实践
-
-### 1. 单元格引用格式
-- ✅ 使用 A1 notation：`"A1"`, `"B2"`, `"AA10"`
-- ✅ 范围使用冒号：`"A1:B10"`, `"C1:C100"`
-- ❌ 避免使用 R1C1 格式
-
-### 2. 试算表 ID 格式
-- 试算表 ID 是一长串字符，从网址中获取：
-  ```
-  https://docs.google.com/spreadsheets/d/【这里是ID】/edit
-  ```
-- 示例：`1dh0chvqXjBMliJm3T7KC2JxHdwOKV4AT89xLlIJSE7o`
-
-### 3. 工作表名称
-- 默认为 "工作表1"（中文）或 "Sheet1"（英文）
-- 如果用户指定了工作表名称，务必使用正确的名称
-
-### 4. 错误处理
-- 如果操作失败，工具会返回错误信息
-- 常见错误：
-  - 试算表 ID 无效
-  - 没有权限访问
-  - 工作表名称不存在
-  - 单元格格式错误
-
-## 工作流程建议
-
-### 场景 1：写入数据
-```
-用户: "在 A1 写入 Hello"
-步骤:
-1. 确认有 spreadsheet_id
-2. 使用 write_cell(spreadsheet_id, "A1", "Hello")
-3. 回报写入结果
+**讀取單元格**
+```bash
+python scripts/tools.py read_cell <spreadsheet_id> A1
 ```
 
-### 场景 2：读取数据
-```
-用户: "读取 A1 的数据"
-步骤:
-1. 确认有 spreadsheet_id
-2. 使用 read_cell(spreadsheet_id, "A1")
-3. 返回读取的值
+**寫入單元格**
+```bash
+python scripts/tools.py write_cell <spreadsheet_id> A1 "Hello"
 ```
 
-### 场景 3：批量操作
-```
-用户: "读取 A1 到 B10 的所有数据"
-步骤:
-1. 确认有 spreadsheet_id
-2. 使用 read_range(spreadsheet_id, "A1:B10")
-3. 格式化并返回数据
+**讀取範圍**
+```bash
+python scripts/tools.py read_range <spreadsheet_id> A1:B10
 ```
 
-## 回答格式
+**列出工作表**
+```bash
+python scripts/tools.py list_sheets <spreadsheet_id>
+```
 
-### 成功时
-- 明确说明完成的操作
-- 显示相关的数据结果
-- 示例："✅ 成功在 A1 单元格写入 'Hello from MCP!'"
+## 取得 Spreadsheet ID
 
-### 失败时
-- 说明失败原因
-- 提供解决建议
-- 示例："❌ 写入失败：试算表 ID 无效。请检查网址中的 ID 部分。"
+從 Google Sheets 網址中提取 ID：
+```
+https://docs.google.com/spreadsheets/d/【這裡是ID】/edit
+                                      ↑
+                                約 40+ 字符的長字串
+```
 
-## 注意事项
+## 操作流程
 
-1. **权限检查**：确保服务账号有试算表的访问权限
-2. **ID 验证**：试算表 ID 应该是一长串字符（约 40+ 字符）
-3. **工作表名称**：如果不确定，使用 list_sheets 先查看所有工作表
-4. **数据类型**：写入的值会自动转换为字符串
-5. **性能考虑**：大量数据操作时，优先使用 read_range 而不是多次 read_cell
+### 1. 確認 Spreadsheet ID
+
+**沒有 ID？** → 請用戶提供 Google Sheets 網址或 ID
+
+**有 ID？** → 繼續下一步
+
+### 2. 選擇操作類型
+
+| 用戶需求 | 使用工具 | 範例 |
+|---------|---------|------|
+| 讀取單個值 | `read_cell` | 讀取 A1 的值 |
+| 寫入單個值 | `write_cell` | 在 B2 寫入 "測試" |
+| 讀取多個值 | `read_range` | 讀取 A1:C10 的所有數據 |
+| 查看所有工作表 | `list_sheets` | 列出所有工作表名稱 |
+
+### 3. 執行並回報
+
+**成功時**：
+```
+✅ 成功在 A1 單元格寫入 'Hello'
+```
+
+**失敗時**：
+```
+❌ 操作失敗：[錯誤原因]
+建議：[解決方案]
+```
+
+## 單元格格式規範
+
+使用 A1 notation（不使用 R1C1 格式）：
+
+| 格式類型 | 正確示例 | 錯誤示例 |
+|---------|---------|---------|
+| 單元格 | `A1`, `B2`, `AA10` | `R1C1`, `1,1` |
+| 範圍 | `A1:B10`, `C1:C100` | `A1-B10`, `A1..B10` |
+
+## 工作表名稱
+
+- 默認：`"工作表1"` (中文) 或 `"Sheet1"` (英文)
+- 不確定名稱時，先使用 `list_sheets` 查看
+- 有多個工作表時，明確指定 `sheet_name` 參數
+
+## 常見錯誤處理
+
+| 錯誤類型 | 可能原因 | 解決方案 |
+|---------|---------|---------|
+| ID 無效 | Spreadsheet ID 格式錯誤 | 檢查網址中的 ID 部分 |
+| 權限不足 | 服務帳號無訪問權限 | 將試算表分享給服務帳號 |
+| 工作表不存在 | 工作表名稱錯誤 | 使用 `list_sheets` 查看正確名稱 |
+| 單元格格式錯誤 | 使用了非 A1 notation | 改用 A1 格式（如 "A1"） |
+
+## 性能優化
+
+大量數據操作時：
+
+- ✅ **推薦**：使用 `read_range` 一次讀取範圍
+- ❌ **避免**：多次調用 `read_cell` 讀取相鄰單元格
+
+範例：
+```bash
+# 推薦：一次讀取 10 個單元格
+read_range <id> A1:A10
+
+# 避免：調用 10 次
+read_cell <id> A1
+read_cell <id> A2
+...
+```
