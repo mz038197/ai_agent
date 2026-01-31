@@ -2,17 +2,18 @@
 
 基于 LangChain + Ollama + MCP 的 AI Agent 示例项目。
 
-## ✨ 新功能：Skill 支持（直接加载工具，无需 MCP Server）
+## ✨ 新功能：Skill 支持（符合 Anthropic 官方標準）
 
-本项目现在支持类似 Anthropic Claude 的 Skill 系统！Skills 不仅包含指导文档，还包含可执行的工具代码。
+本專案支援類似 Anthropic Claude 的 Skill 系統，現已重構為完全符合官方標準！
 
-**特点：**
-- 📁 自动发现和加载 skills
-- 📖 将 skill 内容注入到 system prompt
-- 🔧 **直接从 skill 加载 Python 工具函数**
-- 🚫 **不需要启动 MCP Server**
-- 🎯 工具代码和指导文档在一起
-- ⚡ 更简单、更直接、更易维护
+**特點：**
+- 📁 自動發現和加載 skills
+- 📖 將 skill 內容注入到 system prompt
+- 🔧 **直接從 skill 加載 Python 工具函數**
+- 🚫 **不需要啟動 MCP Server**
+- 🎯 工具代碼和指導文檔在一起
+- ⚡ 更簡單、更直接、更易維護
+- ✅ **完全符合 Anthropic 官方 Skills 標準**
 
 ## 安装依赖
 
@@ -125,63 +126,63 @@ Skill 是存储在 `./skills/` 目录下的 SKILL.md 文件，用于：
 - 📝 规范回答格式
 - 🎓 教导 Agent 专业知识
 
-### 创建新的 Skill
+### 創建新的 Skill（符合官方標準）
 
-1. 在 `skills/` 目录下创建新文件夹：
+1. 在 `skills/` 目錄下創建新資料夾：
    ```bash
    mkdir skills/my-skill
    ```
 
-2. 创建 `tools.py` 文件（工具函数实现）：
+2. 創建 `scripts/tools.py` 文件（工具函數實現）：
    ```python
    def my_tool(param1: str, param2: int) -> str:
        """
        工具的描述
        
        Args:
-           param1: 参数1说明
-           param2: 参数2说明
+           param1: 參數1說明
+           param2: 參數2說明
        
        Returns:
-           结果说明
+           結果說明
        """
-       # 实现代码
-       return f"处理结果: {param1}, {param2}"
+       # 實現代碼
+       return f"處理結果: {param1}, {param2}"
    
+   # 導出工具列表（推薦）
    __all__ = ['my_tool']
    ```
 
-3. 创建 `SKILL.md` 文件（带 YAML metadata）：
+3. 創建 `SKILL.md` 文件（符合 Anthropic 官方標準）：
    ```markdown
    ---
    name: my-skill
-   description: 这个 skill 的简短描述
-   keywords: [关键词1, 关键词2]
-   tools_file: tools.py
-   tools:
-     - my_tool
-   version: 1.0
+   description: 這個 skill 的簡短描述，說明何時使用它
    ---
    
    # My Skill
    
-   ## 描述
-   这个 skill 的详细说明
+   ## 工具位置
    
-   ## 可用工具
-   - my_tool: 工具的说明
+   本 Skill 的工具函數位於 `scripts/tools.py`，包含：
+   - `my_tool(param1, param2)` - 工具的說明
    
-   ## 最佳实践
-   1. 第一条最佳实践
-   2. 第二条最佳实践
+   ## 使用指南
+   
+   1. 第一步：...
+   2. 第二步：...
+   
+   ## 最佳實踐
+   
+   - ✅ 推薦做法
+   - ❌ 避免做法
    ```
 
-4. 创建 `__init__.py`：
-   ```python
-   from .tools import my_tool
-   
-   __all__ = ['my_tool']
-   ```
+**重要說明：**
+- ✅ YAML frontmatter 只需要 `name` 和 `description`
+- ✅ 工具文件按約定放在 `scripts/tools.py`（自動發現）
+- ✅ 使用 `__all__` 列表導出工具（自動載入）
+- ✅ 無需在 YAML 中定義 `tools_file` 或 `tools`
 
 ### 在代码中使用 Skill
 
@@ -218,22 +219,34 @@ all_tools = loader.load_all_tools()
 tools = loader.load_all_tools(["google-sheets", "web-search"])
 ```
 
-**方法 3: 获取 Skill 元信息**
+**方法 3: 獲取 Skill 元信息**
 ```python
 from utils import SkillLoader
 
 loader = SkillLoader()
 
-# 获取 metadata
+# 獲取 metadata（如果有 YAML frontmatter）
 metadata = loader.get_metadata("google-sheets")
-# {'name': 'google-sheets', 'tools_file': 'tools.py', ...}
+# {'name': 'google-sheets', 'description': '...'}
 
-# 发现所有 skills
+# 發現所有 skills
 skills = loader.discover()
 
-# 获取 skill 信息
+# 獲取 skill 信息
 info = loader.get_info("google-sheets")
 ```
+
+## 📚 重構文檔
+
+專案已重構為完全符合 Anthropic 官方標準，詳見：
+- `REFACTORING_TO_OFFICIAL_STANDARD.md` - 重構詳細說明
+- `DYNAMIC_SKILLS_ARCHITECTURE.md` - 動態 Skills 架構設計
+
+**主要改進：**
+- ✅ 符合官方 Skills 標準
+- ✅ 約定優於配置（自動發現工具文件）
+- ✅ 向後兼容（仍支援自定義擴展）
+- ✅ 更簡潔的 YAML frontmatter
 
 ## 工作原理
 

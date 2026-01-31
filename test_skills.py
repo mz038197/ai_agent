@@ -4,6 +4,14 @@
 这个脚本用于测试 skill 加载和管理功能。
 """
 
+import sys
+import io
+
+# UTF-8 编码设置
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 from utils import SkillLoader, load_skill, discover_skills
 
 

@@ -170,6 +170,11 @@ class SkillLoader:
         """
         从 skill 中加载工具函数并转换为 LangChain Tools
         
+        使用约定优于配置：
+        1. 优先使用 metadata 中的 tools_file 和 tools（如果存在）
+        2. 否则按约定查找 scripts/tools.py 或 tools.py
+        3. 使用模块的 __all__ 来确定要导出哪些工具
+        
         参数:
             skill_name: skill 名称
             verbose: 是否打印加载信息
@@ -179,17 +184,33 @@ class SkillLoader:
         """
         metadata = self.get_metadata(skill_name)
         
-        if not metadata or 'tools_file' not in metadata:
-            if verbose:
-                print(f"⚠️  Skill '{skill_name}' 没有定义 tools_file")
-            return []
+        # 确定工具文件路径（约定优于配置）
+        tools_path = None
+        tool_names = []
         
-        tools_file = metadata['tools_file']
-        tools_path = self.skills_dir / skill_name / tools_file
+        # 方式 1: 从 metadata 获取（向后兼容）
+        if metadata and 'tools_file' in metadata:
+            tools_file = metadata['tools_file']
+            tools_path = self.skills_dir / skill_name / tools_file
+            tool_names = metadata.get('tools', [])
         
-        if not tools_path.exists():
+        # 方式 2: 按约定查找
+        if tools_path is None or not tools_path.exists():
+            # 尝试常见位置
+            possible_paths = [
+                self.skills_dir / skill_name / "scripts" / "tools.py",
+                self.skills_dir / skill_name / "tools.py",
+            ]
+            
+            for path in possible_paths:
+                if path.exists():
+                    tools_path = path
+                    break
+        
+        # 如果找不到工具文件
+        if tools_path is None or not tools_path.exists():
             if verbose:
-                print(f"⚠️  工具文件不存在: {tools_path}")
+                print(f"ℹ️  Skill '{skill_name}' 没有工具文件（已查找 scripts/tools.py 和 tools.py）")
             return []
         
         # 动态导入模块
@@ -203,17 +224,24 @@ class SkillLoader:
             spec.loader.exec_module(module)
             
             # 获取要导出的工具列表
-            tool_names = metadata.get('tools', [])
             if not tool_names:
-                # 如果 metadata 中没有指定，尝试从模块的 __all__ 获取
+                # 从模块的 __all__ 获取
                 tool_names = getattr(module, '__all__', [])
+            
+            # 如果还是没有，尝试自动发现所有公开函数
+            if not tool_names:
+                tool_names = [
+                    name for name in dir(module)
+                    if callable(getattr(module, name)) 
+                    and not name.startswith('_')
+                ]
             
             # 转换为 LangChain Tools
             tools = []
             for tool_name in tool_names:
                 if hasattr(module, tool_name):
                     func = getattr(module, tool_name)
-                    if callable(func):
+                    if callable(func) and not tool_name.startswith('_'):
                         # 检查函数参数数量
                         sig = inspect.signature(func)
                         params = [p for p in sig.parameters.values() 

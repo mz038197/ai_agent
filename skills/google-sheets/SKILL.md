@@ -1,39 +1,31 @@
 ---
 name: google-sheets
 description: 操作 Google Sheets 試算表的讀取和寫入功能。使用此技能來讀取單元格、寫入數據、批量處理範圍數據，或列出工作表。當用戶提到 sheets、試算表、spreadsheet、單元格、或需要操作 Google Sheets 時使用。
-tools_file: scripts/tools.py
-tools:
-  - read_cell
-  - write_cell
-  - read_range
-  - list_sheets
 ---
 
 # Google Sheets 操作
 
+## 工具位置
+
+本 Skill 的工具函數位於 `scripts/tools.py`，包含以下函數：
+
+- `read_cell(spreadsheet_id, cell, sheet_name)` - 讀取單元格
+- `write_cell(spreadsheet_id, cell, value, sheet_name)` - 寫入單元格
+- `read_range(spreadsheet_id, range_name, sheet_name)` - 讀取範圍
+- `list_sheets(spreadsheet_id)` - 列出所有工作表
+
+這些函數會自動載入為可用工具，無需手動導入。
+
 ## 快速開始
 
-使用 `scripts/tools.py` 中的工具操作 Google Sheets：
+**可用工具（已自動載入）：**
 
-**讀取單元格**
-```bash
-python scripts/tools.py read_cell <spreadsheet_id> A1
-```
-
-**寫入單元格**
-```bash
-python scripts/tools.py write_cell <spreadsheet_id> A1 "Hello"
-```
-
-**讀取範圍**
-```bash
-python scripts/tools.py read_range <spreadsheet_id> A1:B10
-```
-
-**列出工作表**
-```bash
-python scripts/tools.py list_sheets <spreadsheet_id>
-```
+| 工具 | 用途 | 範例 |
+|------|------|------|
+| `read_cell` | 讀取單元格 | read_cell(id, "A1") |
+| `write_cell` | 寫入單元格 | write_cell(id, "A1", "Hello") |
+| `read_range` | 讀取範圍 | read_range(id, "A1:B10") |
+| `list_sheets` | 列出工作表 | list_sheets(id) |
 
 ## 取得 Spreadsheet ID
 
