@@ -1,3 +1,6 @@
-langchain
+# LLM 相關
 langchain-ollama
-langchain-chroma
+
+# 語音功能
+faster-whisper
+edge-tts
